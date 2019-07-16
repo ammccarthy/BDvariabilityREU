@@ -228,12 +228,16 @@ def separation_lightcruves(EPIC, campaign_num, clc, list_of_time_lengths):
           periodogram=lk.periodogram.LombScarglePeriodogram.from_lightcurve(clc[x:y], minimum_period=0.05, maximum_period =10)
           periodogram.plot()
           periodogram.period_at_max_power
+          plt.savefig('peroiogram.png')
 
           folded_lightcurve = clc[x:y].fold(periodogram.period_at_max_power.value)
           folded_lightcurve.plot(marker='o',linestyle='none')
+          plt.savefig('foldedlightcurve.png')
 
           bin_folded_lc = folded_lightcurve.bin(5,method='median')
           bin_folded_lc.plot(marker='o',linestyle='None',markersize=4,color='blue')
+          plt.savefig('binfoldedlc.png')
+          plt.clf()
 
           N = len(bin_folded_lc.flux) # number of data points
           t = np.linspace(-0.5, 0.5, N)
@@ -253,6 +257,7 @@ def separation_lightcruves(EPIC, campaign_num, clc, list_of_time_lengths):
           plt.plot(fine_t, data_fit, label='after fitting', color='red')
           plt.text(-0.525,1.045,"Per=%s"%(periodogram.period_at_max_power.value))
           plt.text(-0.525,1.04,"Amp=%s"%(est_amp))
+          plt.savefig('sinefit.png')
 
           x=x+list_of_time_lengths[i-1]
           if i<11:
