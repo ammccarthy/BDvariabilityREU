@@ -9,6 +9,9 @@ from functions import plot_all
 from functions import sep_light_curve
 from functions import separation_lightcurves
 import csv
+import os
+
+
 
 #Eventually allow user to select CSV or individual EPIC
 path_to_csv_file = input('Please type path to csv file: \n')
@@ -34,7 +37,8 @@ for row in csv_f:
 
           separation_lightcurves(EPIC, ob_name, campaign_num, clc, list_of_time_lengths)
 
-
+          os.chdir("/Users/AllieMcCarthy/REU/K2data")
+ 
   except:
      print(str(EPIC)+"_"+str(campaign_num)+' has a problem')
      pass 

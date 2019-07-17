@@ -18,7 +18,7 @@ import pylab as plt
 def correct_lightcurve(EPIC, campaign_num,ob_name):
             EPIC = int(EPIC)
             campaign_num = int(campaign_num)
-            root_path=os.getcwd()
+            root_path=("/Users/AllieMcCarthy/REU/K2data")
             dir_path=root_path+"/"+str(ob_name)+"_"+str(EPIC)+"_"+str(campaign_num)
             os.mkdir(dir_path)
             os.chdir(dir_path)
@@ -219,8 +219,7 @@ def separation_lightcurves(EPIC, ob_name, campaign_num, clc, list_of_time_length
      y=list_of_time_lengths[0]
      for i in range (1,11):       
           print(i)
-          root_path=("/Users/AllieMcCarthy/REU/K2data/"+str(ob_name)+"_"+str(EPIC)+"_"+str(campaign_num))
-          dir_name=root_path+"/SeparatedTime"+str(i)
+          dir_name="/Users/AllieMcCarthy/REU/K2data/"+str(ob_name)+"_"+str(EPIC)+"_"+str(campaign_num)+"/SeparatedTime"+str(i)
           print(dir_name)
           os.mkdir(dir_name)
           os.chdir(dir_name)
@@ -268,3 +267,4 @@ def separation_lightcurves(EPIC, ob_name, campaign_num, clc, list_of_time_length
                y=y+list_of_time_lengths[i]
           print('DONE WITH SEPARATION ANALYSIS')
           plt.close("all")
+
