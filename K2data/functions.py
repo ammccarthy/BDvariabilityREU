@@ -106,7 +106,7 @@ def plot_all(EPIC, campaign_num, tpf, user_lc, p, raw_periodogram, clc, correcte
  
      raw_periodogram.plot()
      raw_periodogram.period_at_max_power
-     plt.text(17,raw_periodogram.period_at_max_power.value,"Per=%s"%(raw_periodogram.period_at_max_power.value))
+     plt.text(0,raw_periodogram.max_power.value,"Per=%s"%(raw_periodogram.period_at_max_power.value))
      plt.title(str(EPIC)+'_'+str(campaign_num)+' Raw Lomb Scargel Periodogram')
      plt.savefig(str(EPIC)+'_'+str(campaign_num)+'RawLombScargelPeriodogram')
 
@@ -116,25 +116,27 @@ def plot_all(EPIC, campaign_num, tpf, user_lc, p, raw_periodogram, clc, correcte
 
      corrected_periodogram.plot()
      corrected_periodogram.period_at_max_power
-     plt.text(17,corrected_periodogram.period_at_max_power.value,"Per=%s"%(corrected_periodogram.period_at_max_power.value))
+     plt.text(0,corrected_periodogram.max_power.value,"Per=%s"%(corrected_periodogram.period_at_max_power.value))
      plt.title(str(EPIC)+'_'+str(campaign_num)+' Corrected Lomb Scargel Periodogram')
      plt.savefig(str(EPIC)+'_'+str(campaign_num)+'CorrectedLombScargelPeriodogram')
 
      corrected_folded_lightcurve.plot(marker='o',linestyle='None')
-     plt.text(17,corrected_periodogram.period_at_max_power.value,"Per=%s"%(corrected_periodogram.period_at_max_power.value))
+     plt.text(-0.525,max(corrected_folded_lightcurve.flux),"Per=%s"%(corrected_periodogram.period_at_max_power.value))
      plt.title(str(EPIC)+'_'+str(campaign_num)+' Corrected Folded Light Curve')
      plt.savefig(str(EPIC)+'_'+str(campaign_num)+'CorrectedFoldedLightCurve')
 
      corrected_bin_folded_lc.plot(marker='o', linestyle='None', markersize=2, color='blue')
-     plt.text(17,corrected_periodogram.period_at_max_power.value,"Per=%s"%(corrected_periodogram.period_at_max_power.value))
+     plt.text(-0.525,max(corrected_bin_folded_lc.flux),"Per=%s"%(corrected_periodogram.period_at_max_power.value))
      plt.title(str(EPIC)+'_'+str(campaign_num)+' Corrected Binned Folded Light Curve')
      plt.savefig(str(EPIC)+'_'+str(campaign_num)+'CorrectedBinnedFoldedLightCurve')
+     plt.clf()
 
      plt.plot(t, corrected_bin_folded_lc.flux, marker='.', linestyle='none', color='black')
      plt.plot(t, data_first_guess, label='first guess', color='yellow')
      plt.plot(fine_t, data_fit, label='after fitting', color='red')
-     plt.text(-0.525,1.045,"Per=%s"%(corrected_periodogram.period_at_max_power.value))
-     plt.text(-0.525,1.04,"Amp=%s"%(est_amp))
+     y_max=max(corrected_bin_folded_lc.flux)
+     plt.text(-0.525,y_max,"Per=%s"%(corrected_periodogram.period_at_max_power.value))
+     plt.text(0,y_max,"Amp=%s"%(est_amp))
      plt.title(str(EPIC)+'_'+str(campaign_num)+' Sine Fit Curve to Binned Folded Corrected Periodogram')
      plt.savefig(str(EPIC)+'_'+str(campaign_num)+'SineFit')
 
@@ -257,8 +259,8 @@ def separation_lightcurves(EPIC, ob_name, campaign_num, clc, list_of_time_length
           plt.plot(t, bin_folded_lc.flux, marker='.', linestyle='none', color='black')
           plt.plot(t, data_first_guess, label='first guess', color='yellow')
           plt.plot(fine_t, data_fit, label='after fitting', color='red')
-          plt.text(-0.525,1.045,"Per=%s"%(periodogram.period_at_max_power.value))
-          plt.text(-0.525,1.04,"Amp=%s"%(est_amp))
+          plt.text(-0.525,max(bin_folded_lc.flux),"Per=%s"%(periodogram.period_at_max_power.value))
+          plt.text(-0.525,max(bin_folded_lc.flux),"Amp=%s"%(est_amp))
           plt.title(str(EPIC)+"_"+str(campaign_num)+" Sine Fitted Binned Folded Light Curve")
           plt.savefig('sinefit.png')
 
@@ -267,4 +269,5 @@ def separation_lightcurves(EPIC, ob_name, campaign_num, clc, list_of_time_length
                y=y+list_of_time_lengths[i]
           print('DONE WITH SEPARATION ANALYSIS')
           plt.close("all")
+
 
