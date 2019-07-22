@@ -23,7 +23,7 @@ def correct_lightcurve(EPIC, campaign_num,ob_name):
             os.mkdir(dir_path)
             os.chdir(dir_path)
         #Actually Running Lightkurve
-            tpf = search_targetpixelfile(EPIC, mission='K2', campaign=campaign_num).download()
+            tpf = search_targetpixelfile(EPIC, mission='K2', campaign=campaign_num, cadence='short').download()
         #Target Pixel File and Aperture Mask
             user_lc = tpf.to_lightcurve(aperture_mask=tpf.pipeline_mask.astype(bool))
             user_lc = user_lc.remove_nans().remove_outliers()
@@ -229,16 +229,19 @@ def separation_lightcurves(EPIC, ob_name, campaign_num, clc, list_of_time_length
           periodogram=lk.periodogram.LombScarglePeriodogram.from_lightcurve(clc[x:y], minimum_period=0.05, maximum_period =10)
           periodogram.plot()
           periodogram.period_at_max_power
+          plt.text(0,periodogram.max_power.value,"Per=%s"%(periodogram.period_at_max_power.value))
           plt.title(str(EPIC)+"_"+str(campaign_num)+" Periodogram")
           plt.savefig(str(EPIC)+"_"+str(campaign_num)+'peroiogram.png')
 
           folded_lightcurve = clc[x:y].fold(periodogram.period_at_max_power.value)
           folded_lightcurve.plot(marker='o',linestyle='none')
+          plt.text(0,max(folded_lightcurve.flux),"Per=%s"%(periodogram.period_at_max_power.value))
           plt.title(str(EPIC)+"_"+str(campaign_num)+" Folded Light Curve")
           plt.savefig(str(EPIC)+"_"+str(campaign_num)+'foldedlightcurve.png')
 
           bin_folded_lc = folded_lightcurve.bin(5,method='median')
           bin_folded_lc.plot(marker='o',linestyle='None',markersize=4,color='blue')
+          plt.text(0,max(bin_folded_lc.flux),"Per=%s"%(periodogram.period_at_max_power.value))
           plt.title(str(EPIC)+"_"+str(campaign_num)+" Bin Folded Light Curve")
           plt.savefig(str(EPIC)+"_"+str(campaign_num)+'binfoldedlc.png')
           plt.clf()
@@ -260,12 +263,12 @@ def separation_lightcurves(EPIC, ob_name, campaign_num, clc, list_of_time_length
           plt.plot(t, data_first_guess, label='first guess', color='yellow')
           plt.plot(fine_t, data_fit, label='after fitting', color='red')
           plt.text(-0.525,max(bin_folded_lc.flux),"Per=%s"%(periodogram.period_at_max_power.value))
-          plt.text(-0.525,max(bin_folded_lc.flux),"Amp=%s"%(est_amp))
+          plt.text(0,max(bin_folded_lc.flux),"Amp=%s"%(est_amp))
           plt.title(str(EPIC)+"_"+str(campaign_num)+" Sine Fitted Binned Folded Light Curve")
           plt.savefig('sinefit.png')
 
           x=x+list_of_time_lengths[i-1]
-          if i<11:
+          if i<10:
                y=y+list_of_time_lengths[i]
           print('DONE WITH SEPARATION ANALYSIS')
           plt.close("all")
