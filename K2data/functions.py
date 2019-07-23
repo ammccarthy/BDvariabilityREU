@@ -7,6 +7,7 @@ import csv
 import lightkurve as lk
 from lightkurve import search_targetpixelfile
 import numpy as np
+from numpy import random
 from scipy.optimize import leastsq
 from tqdm import tqdm
 import astropy.units as u
@@ -23,7 +24,7 @@ def correct_lightcurve(EPIC, campaign_num,ob_name):
             os.mkdir(dir_path)
             os.chdir(dir_path)
         #Actually Running Lightkurve
-            tpf = search_targetpixelfile(EPIC, mission='K2', campaign=campaign_num, cadence='short').download()
+            tpf = search_targetpixelfile(EPIC, mission='K2', campaign=campaign_num).download()
         #Target Pixel File and Aperture Mask
             user_lc = tpf.to_lightcurve(aperture_mask=tpf.pipeline_mask.astype(bool))
             user_lc = user_lc.remove_nans().remove_outliers()
@@ -35,6 +36,8 @@ def correct_lightcurve(EPIC, campaign_num,ob_name):
         #Normalize and Correct Lightcurve
             lc = tpf.to_lightcurve().normalize().remove_nans().remove_outliers()
             clc = lc.correct(windows=10).remove_outliers().fill_gaps()
+            fluxarray=clc.flux
+            stddev=np.std(fluxarray)
         #Corrected Periodogram
             corrected_periodogram=lk.periodogram.LombScarglePeriodogram.from_lightcurve(clc, minimum_period=0.05, maximum_period =100)
             corrected_period_at_max_power= corrected_periodogram.period_at_max_power
@@ -54,7 +57,7 @@ def correct_lightcurve(EPIC, campaign_num,ob_name):
             SFF_bin_folded_lc = SFF_corrected_folded_lightcurve.bin(10,method='median')
 
             print('DONE WITH CORRECTION')
-            return tpf, user_lc, p, raw_periodogram, period_at_max_power_user_lc, lc, clc, corrected_periodogram, corrected_period_at_max_power, corrected_folded_lightcurve, corrected_bin_folded_lc, corrector, new_lc, SFF_corrected_periodogram, SFF_corrected_period, SFF_corrected_folded_lightcurve, SFF_bin_folded_lc
+            return tpf, user_lc, p, raw_periodogram, period_at_max_power_user_lc, lc, clc, stddev, corrected_periodogram, corrected_period_at_max_power, corrected_folded_lightcurve, corrected_bin_folded_lc, corrector, new_lc, SFF_corrected_periodogram, SFF_corrected_period, SFF_corrected_folded_lightcurve, SFF_bin_folded_lc
 
 
 ### SIN CURVE FUNCTION ###
@@ -90,13 +93,13 @@ def fit_sin_curve(corrected_bin_folded_lc):
 
 ### PLOTING FUNCTION ###
 
-def plot_all(EPIC, campaign_num, tpf, user_lc, p, raw_periodogram, clc, corrected_periodogram, corrected_folded_lightcurve, t, corrected_bin_folded_lc, data_first_guess, fine_t, data_fit, est_amp):
+def plot_all(EPIC, campaign_num, tpf, user_lc, p, raw_periodogram, clc, percentile95, percentile99, stddev, corrected_periodogram, corrected_folded_lightcurve, t, corrected_bin_folded_lc, data_first_guess, fine_t, data_fit, est_amp):
 
      tpf.plot(aperture_mask=tpf.pipeline_mask, mask_color='red')
      plt.title(str(EPIC)+'_'+str(campaign_num)+' Pipeline Mask')
      plt.savefig(str(EPIC)+'_'+str(campaign_num)+'PipelineMask')
 
-     user_lc.plot(marker='o', linestyle='None', markersize=2, color='blue')
+     user_lc.plot(marker='.', linestyle='None', markersize=0.1, color='blue')
      plt.title(str(EPIC)+'_'+str(campaign_num)+' Raw Light Curve')
      plt.savefig(str(EPIC)+'_'+str(campaign_num)+'RawLightCurve')
 
@@ -110,22 +113,25 @@ def plot_all(EPIC, campaign_num, tpf, user_lc, p, raw_periodogram, clc, correcte
      plt.title(str(EPIC)+'_'+str(campaign_num)+' Raw Lomb Scargel Periodogram')
      plt.savefig(str(EPIC)+'_'+str(campaign_num)+'RawLombScargelPeriodogram')
 
-     clc.plot()
+     clc.plot(linestyle='none',marker='.')
+     plt.text(min(clc.time),max(clc.flux),"Standard Deviation=%s"%(stddev))
      plt.title(str(EPIC)+'_'+str(campaign_num)+' Corrected Light Curve')
      plt.savefig(str(EPIC)+'_'+str(campaign_num)+'CorrectedLightCurve')
 
      corrected_periodogram.plot()
      corrected_periodogram.period_at_max_power
+     plt.hlines(percentile95,0,20,linestyle='--', color='blue')
+     plt.hlines(percentile99,0,20,linestyle='--', color='red')
      plt.text(0,corrected_periodogram.max_power.value,"Per=%s"%(corrected_periodogram.period_at_max_power.value))
      plt.title(str(EPIC)+'_'+str(campaign_num)+' Corrected Lomb Scargel Periodogram')
      plt.savefig(str(EPIC)+'_'+str(campaign_num)+'CorrectedLombScargelPeriodogram')
 
-     corrected_folded_lightcurve.plot(marker='o',linestyle='None')
-     plt.text(-0.525,max(corrected_folded_lightcurve.flux),"Per=%s"%(corrected_periodogram.period_at_max_power.value))
+     corrected_folded_lightcurve.plot(marker='.',linestyle='None')
+     plt.text(0,max(corrected_folded_lightcurve.flux),"Per=%s"%(corrected_periodogram.period_at_max_power.value))
      plt.title(str(EPIC)+'_'+str(campaign_num)+' Corrected Folded Light Curve')
      plt.savefig(str(EPIC)+'_'+str(campaign_num)+'CorrectedFoldedLightCurve')
 
-     corrected_bin_folded_lc.plot(marker='o', linestyle='None', markersize=2, color='blue')
+     corrected_bin_folded_lc.plot(marker='.', linestyle='None', markersize=0.1, color='blue')
      plt.text(-0.525,max(corrected_bin_folded_lc.flux),"Per=%s"%(corrected_periodogram.period_at_max_power.value))
      plt.title(str(EPIC)+'_'+str(campaign_num)+' Corrected Binned Folded Light Curve')
      plt.savefig(str(EPIC)+'_'+str(campaign_num)+'CorrectedBinnedFoldedLightCurve')
@@ -221,29 +227,25 @@ def separation_lightcurves(EPIC, ob_name, campaign_num, clc, list_of_time_length
      y=list_of_time_lengths[0]
      for i in range (1,11):       
           print(i)
-          dir_name="/Users/AllieMcCarthy/REU/K2data/"+str(ob_name)+"_"+str(EPIC)+"_"+str(campaign_num)+"/SeparatedTime"+str(i)
-          print(dir_name)
-          os.mkdir(dir_name)
-          os.chdir(dir_name)
-
-          periodogram=lk.periodogram.LombScarglePeriodogram.from_lightcurve(clc[x:y], minimum_period=0.05, maximum_period =10)
+         
+          periodogram=lk.periodogram.LombScarglePeriodogram.from_lightcurve(clc[x:y], minimum_period=0.05, maximum_period =10) 
           periodogram.plot()
           periodogram.period_at_max_power
           plt.text(0,periodogram.max_power.value,"Per=%s"%(periodogram.period_at_max_power.value))
-          plt.title(str(EPIC)+"_"+str(campaign_num)+" Periodogram")
-          plt.savefig(str(EPIC)+"_"+str(campaign_num)+'peroiogram.png')
+          plt.title(str(EPIC)+"_"+str(campaign_num)+" Group "+str(i) +" Periodogram")
+          plt.savefig(str(EPIC)+"_"+str(campaign_num)+'group'+str(i)+'peroiogram.png')
 
           folded_lightcurve = clc[x:y].fold(periodogram.period_at_max_power.value)
           folded_lightcurve.plot(marker='o',linestyle='none')
           plt.text(0,max(folded_lightcurve.flux),"Per=%s"%(periodogram.period_at_max_power.value))
-          plt.title(str(EPIC)+"_"+str(campaign_num)+" Folded Light Curve")
-          plt.savefig(str(EPIC)+"_"+str(campaign_num)+'foldedlightcurve.png')
+          plt.title(str(EPIC)+"_"+str(campaign_num)+" Group "+str(i)+" Folded Light Curve")
+          plt.savefig(str(EPIC)+"_"+str(campaign_num)+'group'+str(i)+'foldedlightcurve.png')
 
-          bin_folded_lc = folded_lightcurve.bin(5,method='median')
+          bin_folded_lc = folded_lightcurve.bin(10,method='median')
           bin_folded_lc.plot(marker='o',linestyle='None',markersize=4,color='blue')
           plt.text(0,max(bin_folded_lc.flux),"Per=%s"%(periodogram.period_at_max_power.value))
-          plt.title(str(EPIC)+"_"+str(campaign_num)+" Bin Folded Light Curve")
-          plt.savefig(str(EPIC)+"_"+str(campaign_num)+'binfoldedlc.png')
+          plt.title(str(EPIC)+"_"+str(campaign_num)+" Group "+str(i)+" Bin Folded Light Curve")
+          plt.savefig(str(EPIC)+"_"+str(campaign_num)+'group'+str(i)+'binfoldedlc.png')
           plt.clf()
 
           N = len(bin_folded_lc.flux) # number of data points
@@ -264,8 +266,8 @@ def separation_lightcurves(EPIC, ob_name, campaign_num, clc, list_of_time_length
           plt.plot(fine_t, data_fit, label='after fitting', color='red')
           plt.text(-0.525,max(bin_folded_lc.flux),"Per=%s"%(periodogram.period_at_max_power.value))
           plt.text(0,max(bin_folded_lc.flux),"Amp=%s"%(est_amp))
-          plt.title(str(EPIC)+"_"+str(campaign_num)+" Sine Fitted Binned Folded Light Curve")
-          plt.savefig('sinefit.png')
+          plt.title(str(EPIC)+"_"+str(campaign_num)+" Group "+str(i)+" Sine Fitted Binned Folded Light Curve")
+          plt.savefig(str(EPIC)+"_"+str(campaign_num)+'group'+str(i)+'sinefit.png')
 
           x=x+list_of_time_lengths[i-1]
           if i<10:
@@ -274,3 +276,16 @@ def separation_lightcurves(EPIC, ob_name, campaign_num, clc, list_of_time_length
           plt.close("all")
 
 
+def sim_data(clc,stddev):
+     maxpower=[]
+     for i in range (1000):
+          sim_lc=clc
+     #make array and put it into sim_lc.flux
+          sim_lc.flux=random.normal(1,stddev,len(sim_lc.time))
+          periodogram=lk.periodogram.LombScarglePeriodogram.from_lightcurve(sim_lc, minimum_period=0.05, maximum_period =10)
+          maxpower.append(periodogram.max_power.value)
+
+     percentile95=np.percentile(maxpower,95)
+     percentile99=np.percentile(maxpower,99)
+
+     return percentile95, percentile99
