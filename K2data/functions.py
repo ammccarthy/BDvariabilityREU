@@ -24,7 +24,7 @@ def correct_lightcurve(EPIC, campaign_num,ob_name):
             os.mkdir(dir_path)
             os.chdir(dir_path)
         #Actually Running Lightkurve
-            tpf = search_targetpixelfile(EPIC, mission='K2', campaign=campaign_num).download()
+            tpf = search_targetpixelfile(EPIC, mission='K2', campaign=campaign_num, cadence='short').download()
         #Target Pixel File and Aperture Mask
             user_lc = tpf.to_lightcurve(aperture_mask=tpf.pipeline_mask.astype(bool))
             user_lc = user_lc.remove_nans().remove_outliers()
@@ -44,7 +44,7 @@ def correct_lightcurve(EPIC, campaign_num,ob_name):
         #Folded Corrected Lightcurve
             corrected_folded_lightcurve = clc.fold(corrected_period_at_max_power.value)
         #Binned Folded Lightcurve
-            corrected_bin_folded_lc = corrected_folded_lightcurve.bin(10,method='median')
+            corrected_bin_folded_lc = corrected_folded_lightcurve.bin(100,method='median')
         #SFF Correcting
             corrector=lk.SFFCorrector(lc)
             new_lc = corrector.correct(lc.centroid_col,lc.centroid_row)
@@ -54,7 +54,7 @@ def correct_lightcurve(EPIC, campaign_num,ob_name):
         #SFF Corrected Lightcurve
             SFF_corrected_folded_lightcurve = new_lc.fold(SFF_corrected_period.value)
         #Binned Folded Lightcurve
-            SFF_bin_folded_lc = SFF_corrected_folded_lightcurve.bin(10,method='median')
+            SFF_bin_folded_lc = SFF_corrected_folded_lightcurve.bin(100,method='median')
 
             print('DONE WITH CORRECTION')
             return tpf, user_lc, p, raw_periodogram, period_at_max_power_user_lc, lc, clc, stddev, corrected_periodogram, corrected_period_at_max_power, corrected_folded_lightcurve, corrected_bin_folded_lc, corrector, new_lc, SFF_corrected_periodogram, SFF_corrected_period, SFF_corrected_folded_lightcurve, SFF_bin_folded_lc
@@ -221,8 +221,10 @@ def sep_light_curve(clc):
 
 ### PRODUCING PHASE FOLDED BINNED LIGHT CURVES FOR EACH SEPARATION OF VARIABLE OBJECT ###
 
-def separation_lightcurves(EPIC, ob_name, campaign_num, clc, list_of_time_lengths):
-
+def separation_lightcurves_correctedlc_individualperiods(EPIC, ob_name, campaign_num, clc, list_of_time_lengths):
+     
+     os.mkdir('/Users/AllieMcCarthy/REU/K2data/UseCorrectedLCButIndividualPeriodsforFolding')
+     os.chdir('/Users/AllieMcCarthy/REU/K2data/UseCorrectedLCButIndividualPeriodsforFolding')
      x=1
      y=list_of_time_lengths[0]
      for i in range (1,11):       
@@ -241,7 +243,7 @@ def separation_lightcurves(EPIC, ob_name, campaign_num, clc, list_of_time_length
           plt.title(str(EPIC)+"_"+str(campaign_num)+" Group "+str(i)+" Folded Light Curve")
           plt.savefig(str(EPIC)+"_"+str(campaign_num)+'group'+str(i)+'foldedlightcurve.png')
 
-          bin_folded_lc = folded_lightcurve.bin(10,method='median')
+          bin_folded_lc = folded_lightcurve.bin(100,method='median')
           bin_folded_lc.plot(marker='o',linestyle='None',markersize=4,color='blue')
           plt.text(0,max(bin_folded_lc.flux),"Per=%s"%(periodogram.period_at_max_power.value))
           plt.title(str(EPIC)+"_"+str(campaign_num)+" Group "+str(i)+" Bin Folded Light Curve")
@@ -274,6 +276,128 @@ def separation_lightcurves(EPIC, ob_name, campaign_num, clc, list_of_time_length
                y=y+list_of_time_lengths[i]
           print('DONE WITH SEPARATION ANALYSIS')
           plt.close("all")
+
+     os.chdir('/Users/AllieMcCarthy/REU/K2data')
+
+def separation_lightcurves_force_individualperiods(EPIC, ob_name, campaign_num, corrected_period_at_max_power, clc, list_of_time_lengths):
+
+     os.mkdir('/Users/AllieMcCarthy/REU/K2data/ForceIndividualPeriods')
+     os.chdir('/Users/AllieMcCarthy/REU/K2data/ForceIndividualPeriods')
+     x=1
+     y=list_of_time_lengths[0]
+     for i in range (1,11):
+          print(i)
+
+          folded_lightcurve = clc[x:y].fold(corrected_period_at_max_power.value)
+          folded_lightcurve.plot(marker='o',linestyle='none')
+          plt.text(0,max(folded_lightcurve.flux),"Per=%s"%(corrected_period_at_max_power.value))
+          plt.title(str(EPIC)+"_"+str(campaign_num)+" Group "+str(i)+" Folded Light Curve")
+          plt.savefig(str(EPIC)+"_"+str(campaign_num)+'group'+str(i)+'foldedlightcurve.png')
+
+          bin_folded_lc = folded_lightcurve.bin(100,method='median')
+          bin_folded_lc.plot(marker='o',linestyle='None',markersize=4,color='blue')
+          plt.text(0,max(bin_folded_lc.flux),"Per=%s"%(corrected_period_at_max_power.value))
+          plt.title(str(EPIC)+"_"+str(campaign_num)+" Group "+str(i)+" Bin Folded Light Curve")
+          plt.savefig(str(EPIC)+"_"+str(campaign_num)+'group'+str(i)+'binfoldedlc.png')
+          plt.clf()
+
+          N = len(bin_folded_lc.flux) # number of data points
+          t = np.linspace(-0.5, 0.5, N)
+          guess_mean = np.mean(bin_folded_lc.flux)
+          guess_std = 3*np.std(bin_folded_lc.flux)/(2**0.5)/(2**0.5)
+          guess_phase = 0
+          guess_freq = 1
+          guess_amp = 1
+          data_first_guess = guess_std*np.sin(t+guess_phase) + guess_mean
+          optimize_func = lambda x: x[0]*np.sin(x[1]*t+x[2]) + x[3] - bin_folded_lc.flux
+          est_amp, est_freq, est_phase, est_mean = leastsq(optimize_func, [guess_amp, guess_freq, guess_phase, guess_mean])[0]
+          data_fit = est_amp*np.sin(est_freq*t+est_phase) + est_mean
+          fine_t = np.arange(-0.5,0.5,0.001)
+          data_fit=est_amp*np.sin(est_freq*fine_t+est_phase)+est_mean
+          plt.plot(t, bin_folded_lc.flux, marker='.', linestyle='none', color='black')
+          plt.plot(t, data_first_guess, label='first guess', color='yellow')
+          plt.plot(fine_t, data_fit, label='after fitting', color='red')
+          plt.text(-0.525,max(bin_folded_lc.flux),"Per=%s"%(corrected_period_at_max_power.value))
+          plt.text(0,max(bin_folded_lc.flux),"Amp=%s"%(est_amp))
+          plt.title(str(EPIC)+"_"+str(campaign_num)+" Group "+str(i)+" Sine Fitted Binned Folded Light Curve")
+          plt.savefig(str(EPIC)+"_"+str(campaign_num)+'group'+str(i)+'sinefit.png')
+
+          x=x+list_of_time_lengths[i-1]
+          if i<10:
+               y=y+list_of_time_lengths[i]
+          print('DONE WITH SEPARATION ANALYSIS')
+          plt.close("all")
+     
+     os.chdir('/Users/AllieMcCarthy/REU/K2data')
+
+
+
+def separation_lightcurves_correct_individual(EPIC, ob_name, tpf, campaign_num, list_of_time_lengths):
+
+     os.mkdir('/Users/AllieMcCarthy/REU/K2data/CorrectIndividual')
+     os.chdir('/Users/AllieMcCarthy/REU/K2data/CorrectIndividual')
+     x=1
+     y=list_of_time_lengths[0]
+     for i in range (1,11):
+          print(i)
+
+          user_lc = tpf[x:y].to_lightcurve(aperture_mask=tpf.pipeline_mask.astype(bool))
+          # Clean the light curve
+          user_lc = user_lc.remove_nans().remove_outliers().fill_gaps()  
+
+          lc = tpf[x:y].to_lightcurve().normalize().remove_nans().remove_outliers()
+          clc = lc.correct(windows=10).remove_outliers().fill_gaps()
+
+          periodogram=lk.periodogram.LombScarglePeriodogram.from_lightcurve(clc[x:y], minimum_period=0.05, maximum_period =10)
+          periodogram.plot()
+          periodogram.period_at_max_power
+          plt.text(0,periodogram.max_power.value,"Per=%s"%(periodogram.period_at_max_power.value))
+          plt.title(str(EPIC)+"_"+str(campaign_num)+" Group "+str(i) +" Periodogram")
+          plt.savefig(str(EPIC)+"_"+str(campaign_num)+'group'+str(i)+'peroiogram.png')
+
+          folded_lightcurve = clc[x:y].fold(periodogram.period_at_max_power.value))
+          folded_lightcurve.plot(marker='o',linestyle='none')
+          plt.text(0,max(folded_lightcurve.flux),"Per=%s"%(periodogram.period_at_max_power.value))
+          plt.title(str(EPIC)+"_"+str(campaign_num)+" Group "+str(i)+" Folded Light Curve")
+          plt.savefig(str(EPIC)+"_"+str(campaign_num)+'group'+str(i)+'foldedlightcurve.png')
+
+          bin_folded_lc = folded_lightcurve.bin(100,method='median')
+          bin_folded_lc.plot(marker='o',linestyle='None',markersize=4,color='blue')
+          plt.text(0,max(bin_folded_lc.flux),"Per=%s"%(periodogram.period_at_max_power.value))
+          plt.title(str(EPIC)+"_"+str(campaign_num)+" Group "+str(i)+" Bin Folded Light Curve")
+          plt.savefig(str(EPIC)+"_"+str(campaign_num)+'group'+str(i)+'binfoldedlc.png')
+          plt.clf()
+
+          N = len(bin_folded_lc.flux) # number of data points
+          t = np.linspace(-0.5, 0.5, N)
+          guess_mean = np.mean(bin_folded_lc.flux)
+          guess_std = 3*np.std(bin_folded_lc.flux)/(2**0.5)/(2**0.5)
+          guess_phase = 0
+          guess_freq = 1
+          guess_amp = 1
+          data_first_guess = guess_std*np.sin(t+guess_phase) + guess_mean
+          optimize_func = lambda x: x[0]*np.sin(x[1]*t+x[2]) + x[3] - bin_folded_lc.flux
+          est_amp, est_freq, est_phase, est_mean = leastsq(optimize_func, [guess_amp, guess_freq, guess_phase, guess_mean])[0]
+          data_fit = est_amp*np.sin(est_freq*t+est_phase) + est_mean
+          fine_t = np.arange(-0.5,0.5,0.001)
+          data_fit=est_amp*np.sin(est_freq*fine_t+est_phase)+est_mean
+          plt.plot(t, bin_folded_lc.flux, marker='.', linestyle='none', color='black')
+          plt.plot(t, data_first_guess, label='first guess', color='yellow')
+          plt.plot(fine_t, data_fit, label='after fitting', color='red')
+          plt.text(-0.525,max(bin_folded_lc.flux),"Per=%s"%(periodogram.period_at_max_power.value))
+          plt.text(0,max(bin_folded_lc.flux),"Amp=%s"%(est_amp))
+          plt.title(str(EPIC)+"_"+str(campaign_num)+" Group "+str(i)+" Sine Fitted Binned Folded Light Curve")
+          plt.savefig(str(EPIC)+"_"+str(campaign_num)+'group'+str(i)+'sinefit.png')
+
+          x=x+list_of_time_lengths[i-1]
+          if i<10:
+               y=y+list_of_time_lengths[i]
+          print('DONE WITH SEPARATION ANALYSIS')
+          plt.close("all")
+
+     os.chdir('/Users/AllieMcCarthy/REU/K2data')
+
+
 
 
 def sim_data(clc,stddev):
