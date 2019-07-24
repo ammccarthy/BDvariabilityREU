@@ -38,7 +38,11 @@ for row in csv_f:
 
           list_of_time_lengths, first_time, first_flux, second_time, second_flux, third_time, third_flux, fourth_time, fourth_flux, fifth_time, fifth_flux, sixth_time, sixth_flux, seventh_time, seventh_flux, eighth_time, eighth_flux, ninth_time, ninth_flux, tenth_time, tenth_flux = sep_light_curve(clc)
 
-          separation_lightcurves(EPIC, ob_name, campaign_num, clc, list_of_time_lengths)
+          separation_lightcurves_correctedlc_individualperiods(EPIC, ob_name, campaign_num, clc, list_of_time_lengths)
+
+          separation_lightcurves_force_individualperiods(EPIC, ob_name, campaign_num, corrected_period_at_max_power, clc, list_of_time_lengths)
+ 
+          separation_lightcurves_correct_individual(EPIC, ob_name, tpf, campaign_num, list_of_time_lengths)
 
           os.chdir("/Users/AllieMcCarthy/REU/K2data")
  
